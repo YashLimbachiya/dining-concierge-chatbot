@@ -7,6 +7,7 @@ import math
 import dateutil.parser
 import datetime
 import time
+import re
 import os
 import json
 import logging
@@ -22,6 +23,8 @@ default_cuisines = ['indian', 'chinese', 'japanese', 'italian', 'american']
 min_number_of_ppl = 2
 max_number_of_ppl = 20
 sqs_url = os.environ.get('SQS_URL')
+# Make a regular expression for validating an Email
+regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
 
 
 """ --- Helpers to build responses which match the structure of the necessary dialog actions --- """
@@ -120,7 +123,7 @@ def send_to_sqs(slots):
     logger.info(response)
 
 
-def validate_dining_suggestions(location, cuisine, numberOfPpl, date, time, phoneNumber):
+def validate_dining_suggestions(location, cuisine, numberOfPpl, date, time, phoneNumber, emailAddress):
     numberOfPpl = parse_int(numberOfPpl) if numberOfPpl is not None else numberOfPpl
 
     logger.info('Location captured-> {}, Default Location -> {}'.format(location, default_location))
@@ -200,12 +203,24 @@ def validate_dining_suggestions(location, cuisine, numberOfPpl, date, time, phon
         logger.debug('Phone Pumber is None')
         return build_validation_result(False,
                                        'phoneNumber',
-                                       'Great. Lastly, I need your phone number so I can send you my findings.')
+                                       'Could you help me with your phone number?')
     elif len(phoneNumber) != 10:
         logger.debug('Invalid Phone Pumber-> {}'.format(phoneNumber))
         return build_validation_result(False,
                                        'phoneNumber',
                                        'Please enter a valid 10-digit phone number.')
+    
+    logger.info('Email Address -> {}'.format(emailAddress))
+    if emailAddress is None:
+        logger.debug('Email Address is None')
+        return build_validation_result(False,
+                                       'emailAddress',
+                                       'Great. Lastly, could you provide me with your email address so that I can send you my suggestions?')
+    elif (not re.fullmatch(regex, emailAddress)):
+        logger.debug('Invalid Email Address-> {}'.format(emailAddress))
+        return build_validation_result(False,
+                                       'emailAddress',
+                                       'Please enter a valid email address.')
 
     logger.info('Validated all the slots\n')
     return build_validation_result(True, None, None)
@@ -228,6 +243,7 @@ def dining_suggestions(intent_request):
     date = slots['date']['value']['interpretedValue'] if slots['date'] is not None else None
     time = slots['time']['value']['interpretedValue'] if slots['time'] is not None else None
     phoneNumber = slots['phoneNumber']['value']['interpretedValue'] if slots['phoneNumber'] is not None else None
+    emailAddress = slots['emailAddress']['value']['interpretedValue'] if slots['emailAddress'] is not None else None
     source = intent_request['invocationSource']
     intent_name = intent_request['sessionState']['intent']['name']
 
@@ -235,7 +251,7 @@ def dining_suggestions(intent_request):
         # Perform basic validation on the supplied input slots.
         # Use the elicitSlot dialog action to re-prompt for the first violation detected.
         
-        validation_result = validate_dining_suggestions(location, cuisine, numberOfPpl, date, time, phoneNumber)
+        validation_result = validate_dining_suggestions(location, cuisine, numberOfPpl, date, time, phoneNumber, emailAddress)
         logger.info('Validation Result -> {}'.format(validation_result['isValid']))
         if not validation_result['isValid']:
             slots[validation_result['violatedSlot']] = None
