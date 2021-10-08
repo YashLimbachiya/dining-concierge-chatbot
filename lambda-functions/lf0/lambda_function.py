@@ -1,10 +1,12 @@
 import boto3
 import os
 
+""" --- Constants --- """
 botId = os.environ.get('BOT_ID')
 botAliasId = os.environ.get('BOT_ALIAS_ID')
 localeId = 'en_US'
 sessionId = 'test_session'
+
 
 def lambda_handler(event, context):
     # Lex client uses 'lexv2-runtime'

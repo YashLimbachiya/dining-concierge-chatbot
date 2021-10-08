@@ -15,6 +15,7 @@ sqs = boto3.client('sqs')
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
+""" --- Constants --- """
 dining_suggestions_intent = 'DiningSuggestionsIntent'
 default_location = 'Manhattan'
 default_cuisines = ['indian', 'chinese', 'japanese', 'italian', 'american']
